@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
-import { Button, Text, TextInput, TouchableOpacity, View, BackHandler } from 'react-native';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { Button, Text, TextInput, TouchableOpacity, View, BackHandler, StyleSheet } from 'react-native';
 import { SafeAreaView, StackActions } from 'react-navigation';
 import { DrawerActions, NavigationDrawerProp } from 'react-navigation-drawer';
-import { FeatureButton } from '@src/components/FeatureButton';
+import Animated, { Easing } from 'react-native-reanimated';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
 
 /**
  * https://reactnavigation.org/docs/4.x/typescript
@@ -12,6 +13,7 @@ type Props = {
 }
 
 const MasterScreen = (props: Props) => {
+    const translateX = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
 
@@ -23,15 +25,22 @@ const MasterScreen = (props: Props) => {
         props.navigation.dispatch(DrawerActions.toggleDrawer());
     }
 
-    const onButtonPress = () => {
-        const pushAction = StackActions.push({
-            routeName: 'Stack1',
-            params: {
-                myUserId: 9,
-            },
-        });
+    const onGestureEvent = useCallback(Animated.event([
+        {
+            nativeEvent: {
+                translationX: translateX
+            }
+        }
+    ], { useNativeDriver: true }), [])
 
-        props.navigation.dispatch(pushAction);
+    const onHandlerStateChange = (event) => {
+        if (event.nativeEvent.oldState == State.ACTIVE) {
+            Animated.timing(translateX, {
+                toValue: 0,
+                duration: 200,
+                easing: Easing.inOut(Easing.quad)
+            }).start();
+        }
     }
 
 
@@ -45,7 +54,9 @@ const MasterScreen = (props: Props) => {
                 </TouchableOpacity>
             </View>
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                <FeatureButton />
+                <PanGestureHandler onGestureEvent={onGestureEvent} onHandlerStateChange={onHandlerStateChange}>
+                    <Animated.View style={{ ...styles.box, transform: [{ translateX: translateX }] }} />
+                </PanGestureHandler>
             </View>
         </SafeAreaView>
 
@@ -56,3 +67,11 @@ const MasterScreen = (props: Props) => {
 MasterScreen.navigationOptions = {}
 
 export { MasterScreen }
+
+const styles = StyleSheet.create({
+    box: {
+        backgroundColor: 'red',
+        width: 100,
+        height: 100
+    }
+})
