@@ -2,9 +2,18 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { Button, Text, TextInput, TouchableOpacity, View, BackHandler, StyleSheet } from 'react-native';
 import { SafeAreaView, StackActions } from 'react-navigation';
 import { DrawerActions, NavigationDrawerProp } from 'react-navigation-drawer';
-import Animated, { Easing, Value, cond, eq, set } from 'react-native-reanimated';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
-import { usePanGestureHandler, translate, withOffset } from "react-native-redash/lib/module/v1";
+import Animated from 'react-native-reanimated';
+
+const {
+    event,
+    Value,
+    cond,
+    add,
+    multiply,
+    eq,
+    set,
+} = Animated;
 /**
  * https://reactnavigation.org/docs/4.x/typescript
  */
@@ -12,15 +21,43 @@ type Props = {
     navigation: NavigationDrawerProp<{ userId: string, routeName: string }>;
 }
 
+function interaction(gestureTranslation, gestureState) {
+    const dragging = new Value(0);
+    const start = new Value(0);
+    const position = new Value(0);
+
+    return cond(
+        eq(gestureState, State.ACTIVE),
+        [
+            cond(dragging, 0, [set(dragging, 1), set(start, position)]),
+            set(position, add(start, gestureTranslation)),
+        ],
+        [set(dragging, 0), position]
+    );
+}
+
 const MasterScreen = (props: Props) => {
-    const { gestureHandler, translation, veloicty, state } = usePanGestureHandler();
-    const translateX = withOffset(translation.x, state);
-    const translateY = withOffset(translation.y, state);
+    const gestureX = useRef(new Value(0)).current;
+    const gestureY = useRef(new Value(0)).current;
+
+    const state = useRef(new Value(-1)).current;
 
     useEffect(() => {
 
     }, []);
 
+    const onGestureEvent = event([
+        {
+            nativeEvent: {
+                translationX: gestureX,
+                translationY: gestureY,
+                state: state,
+            },
+        },
+    ]);
+
+    const transX = interaction(gestureX, state);
+    const transY = interaction(gestureY, state);
 
 
 
@@ -41,8 +78,9 @@ const MasterScreen = (props: Props) => {
                 </TouchableOpacity>
             </View>
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                <PanGestureHandler {...gestureHandler}>
-                    <Animated.View style={[styles.box, { transform: [{ translateX }, { translateY }] }]} />
+                <PanGestureHandler onGestureEvent={onGestureEvent}
+                    onHandlerStateChange={onGestureEvent}>
+                    <Animated.View style={[styles.box, { transform: [{ translateX: transX }, { translateY: transY }] }]} />
                 </PanGestureHandler>
             </View>
         </SafeAreaView>
